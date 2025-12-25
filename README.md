@@ -118,7 +118,16 @@ Open browser:
 ```
 http://127.0.0.1:8000
 ```
+---
+## Screenshot
 
+### Home page
+<img width="1136" height="848" alt="image" src="https://github.com/user-attachments/assets/a09fa52b-f90e-4673-be6f-72a9336e9835" />
+
+### Razorpay Page
+<img width="1302" height="740" alt="image" src="https://github.com/user-attachments/assets/e932fcc6-0656-4c78-937b-cfbd39b9b743" />
+
+---
 ---
 
 ## One‑Time Payment Flow
