@@ -43,7 +43,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2>Razorpay Payment Dashboard</h2>
             <button id="payBtn" class="btn btn-primary btn-lg">
-                💳 Pay 
+                💳 Pay
             </button>
         </div>
 
@@ -166,7 +166,7 @@
                                                         class="badge bg-{{
                             $payment->status == 'success' ? 'success' :
                             ($payment->status == 'failed' ? 'danger' : 'warning')
-                                                                                                                                                                                                                            }}">
+                                                                                                                                                                                                                                                }}">
                                                         {{ ucfirst($payment->status) }}
                                                     </span>
                                                 </td>
