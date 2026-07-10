@@ -1,12 +1,30 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-
 use App\Http\Controllers\RazorpayController;
 use App\Http\Controllers\RazorpayWebhookController;
 
-Route::get('/', [RazorpayController::class, 'index']);
-Route::post('/create-order', [RazorpayController::class, 'createOrder']);
-Route::post('/payment-success', [RazorpayController::class, 'paymentSuccess']);
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+*/
 
-Route::post('/razorpay-webhook', [RazorpayWebhookController::class, 'handle']);
+// Dashboard
+Route::get('/', [RazorpayController::class, 'index'])->name('payments.index');
+
+// Create Razorpay Order
+Route::post('/create-order', [RazorpayController::class, 'createOrder'])
+    ->name('payments.create-order');
+
+// Payment Success Callback
+Route::post('/payment-success', [RazorpayController::class, 'paymentSuccess'])
+    ->name('payments.success');
+
+// Razorpay Webhook
+Route::post('/razorpay-webhook', [RazorpayWebhookController::class, 'handle'])
+    ->name('payments.webhook');
+
+// Delete Payment
+Route::delete('/payments/{id}', [RazorpayController::class, 'destroy'])
+    ->name('payments.destroy');
