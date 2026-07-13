@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\RazorpayController;
 use App\Http\Controllers\RazorpayWebhookController;
+use App\Http\Controllers\PaymentReceiptController;
 
 /*
 |--------------------------------------------------------------------------
@@ -12,6 +13,9 @@ use App\Http\Controllers\RazorpayWebhookController;
 
 // Dashboard
 Route::get('/', [RazorpayController::class, 'index'])->name('payments.index');
+
+Route::get('/payment/{id}/receipt', [PaymentReceiptController::class, 'download'])
+    ->name('payment.receipt');
 
 // Create Razorpay Order
 Route::post('/create-order', [RazorpayController::class, 'createOrder'])
