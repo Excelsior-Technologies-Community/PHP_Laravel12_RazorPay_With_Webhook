@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Razorpay\Api\Api;
 use App\Models\Payment;
+use Illuminate\Support\Facades\DB;
 
 class RazorpayController extends Controller
 {
@@ -60,13 +61,47 @@ class RazorpayController extends Controller
 
         $payments = $payments->paginate(4)->withQueryString();
 
+        // Monthly Revenue
+
+        $monthlyRevenue = Payment::select(
+            DB::raw('MONTH(created_at) as month'),
+            DB::raw('SUM(amount) as revenue')
+        )
+            ->where('status', Payment::STATUS_SUCCESS)
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get();
+
+
+        // Payment Status
+
+        $statusData = [
+            'Success' => $successPayments,
+            'Failed' => $failedPayments,
+            'Pending' => $pendingPayments,
+        ];
+
+
+        // Monthly Payment Count
+
+        $monthlyPayments = Payment::select(
+            DB::raw('MONTH(created_at) as month'),
+            DB::raw('COUNT(*) as total')
+        )
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get();
+
         return view('pay', compact(
             'payments',
             'totalPayments',
             'successPayments',
             'failedPayments',
             'pendingPayments',
-            'totalRevenue'
+            'totalRevenue',
+            'monthlyRevenue',
+            'statusData',
+            'monthlyPayments'
         ));
     }
 
@@ -94,7 +129,11 @@ class RazorpayController extends Controller
             'status' => Payment::STATUS_PENDING,
         ]);
 
-        return response()->json($order);
+        return response()->json([
+            'id' => $order['id'],
+            'amount' => $order['amount'],
+            'currency' => $order['currency']
+        ]);
     }
 
     /**
@@ -102,14 +141,39 @@ class RazorpayController extends Controller
      */
     public function paymentSuccess(Request $request)
     {
-        Payment::where('order_id', $request->razorpay_order_id)
-            ->update([
-                'payment_id' => $request->razorpay_payment_id,
-                'status' => Payment::STATUS_SUCCESS
-            ]);
+        \Log::info('Payment Success Response', $request->all());
+
+        $payment = Payment::where(
+            'order_id',
+            $request->razorpay_order_id
+        )->first();
+
+        if (!$payment) {
+
+            \Log::error('Payment order not found: ' . $request->razorpay_order_id);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Order not found'
+            ], 404);
+        }
+
+
+        $payment->update([
+            'payment_id' => $request->razorpay_payment_id,
+            'status' => Payment::STATUS_SUCCESS
+        ]);
+
+
+        \Log::info('Payment Updated Successfully', [
+            'id' => $payment->id,
+            'status' => $payment->status
+        ]);
+
 
         return response()->json([
-            'success' => true
+            'success' => true,
+            'message' => 'Payment updated successfully'
         ]);
     }
 

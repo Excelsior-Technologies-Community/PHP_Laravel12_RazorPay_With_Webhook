@@ -10,6 +10,7 @@
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         body {
@@ -26,16 +27,24 @@
             border-radius: 15px;
             padding: 20px
         }
+
+        .chart-box {
+            height: 300px;
+        }
+
+        .chart-box-large {
+            height: 350px;
+        }
     </style>
 </head>
 
 <body>
 
     @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show">
-            {{ session('success') }}
-            <button class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+    <div class="alert alert-success alert-dismissible fade show">
+        {{ session('success') }}
+        <button class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
     @endif
 
     <div class="container py-4">
@@ -92,6 +101,51 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div class="row mb-4">
+
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-header">
+                        Monthly Revenue
+                    </div>
+
+                    <div class="card-body chart-box">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+
+                </div>
+            </div>
+
+
+            <div class="col-md-6">
+                <div class="card shadow">
+
+                    <div class="card-header">
+                        Payment Status
+                    </div>
+
+                    <div class="card-body chart-box">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+
+        <div class="card shadow mb-4">
+
+            <div class="card-header">
+                Monthly Payments Trend
+            </div>
+
+            <div class="card-body chart-box-large">
+                <canvas id="paymentChart"></canvas>
+            </div>
+
         </div>
 
         <div class="table-container shadow-sm">
@@ -156,36 +210,46 @@
                     </thead>
                     <tbody>
                         @forelse($payments as $payment)
-                                            <tr>
-                                                <td>{{ $payments->firstItem() + $loop->index }}</td>
-                                                <td>{{ $payment->order_id }}</td>
-                                                <td>{{ $payment->payment_id ?? '-' }}</td>
-                                                <td>₹{{ $payment->amount }}</td>
-                                                <td>
-                                                    <span
-                                                        class="badge bg-{{
+                        <tr>
+                            <td>{{ $payments->firstItem() + $loop->index }}</td>
+                            <td>{{ $payment->order_id }}</td>
+                            <td>{{ $payment->payment_id ?? '-' }}</td>
+                            <td>₹{{ $payment->amount }}</td>
+                            <td>
+                                <span
+                                    class="badge bg-{{
                             $payment->status == 'success' ? 'success' :
                             ($payment->status == 'failed' ? 'danger' : 'warning')
                                                                                                                                                                                                                                                 }}">
-                                                        {{ ucfirst($payment->status) }}
-                                                    </span>
-                                                </td>
-                                                <td>{{ $payment->created_at->format('d M Y h:i A') }}</td>
-                                                <td>
-                                                    <form action="{{ route('payments.destroy', $payment->id) }}" method="POST">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button class="btn btn-danger btn-sm"
-                                                            onclick="return confirm('Delete this payment?')">
-                                                            Delete
-                                                        </button>
-                                                    </form>
-                                                </td>
-                                            </tr>
+                                    {{ ucfirst($payment->status) }}
+                                </span>
+                            </td>
+                            <td>{{ $payment->created_at->format('d M Y h:i A') }}</td>
+                            <td class="d-flex gap-2">
+
+                                <a href="{{ route('payment.receipt',$payment->id) }}"
+                                    class="btn btn-success btn-sm">
+                                    PDF
+                                </a>
+
+                                <form action="{{ route('payments.destroy', $payment->id) }}" method="POST">
+
+                                    @csrf
+                                    @method('DELETE')
+
+                                    <button class="btn btn-danger btn-sm"
+                                        onclick="return confirm('Delete this payment?')">
+                                        Delete
+                                    </button>
+
+                                </form>
+
+                            </td>
+                        </tr>
                         @empty
-                            <tr>
-                                <td colspan="7" class="text-center">No payments found.</td>
-                            </tr>
+                        <tr>
+                            <td colspan="7" class="text-center">No payments found.</td>
+                        </tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -193,62 +257,190 @@
 
             <div class="d-flex justify-content-center mt-4">
                 @if ($payments->lastPage() > 1)
-                    <div class="d-flex justify-content-center mt-4">
-                        <nav>
-                            <ul class="pagination">
+                <div class="d-flex justify-content-center mt-4">
+                    <nav>
+                        <ul class="pagination">
 
-                                @for ($i = 1; $i <= $payments->lastPage(); $i++)
-                                    <li class="page-item {{ $payments->currentPage() == $i ? 'active' : '' }}">
-                                        <a class="page-link" href="{{ $payments->url($i) }}">
-                                            {{ $i }}
-                                        </a>
-                                    </li>
+                            @for ($i = 1; $i <= $payments->lastPage(); $i++)
+                                <li class="page-item {{ $payments->currentPage() == $i ? 'active' : '' }}">
+                                    <a class="page-link" href="{{ $payments->url($i) }}">
+                                        {{ $i }}
+                                    </a>
+                                </li>
                                 @endfor
 
-                            </ul>
-                        </nav>
-                    </div>
+                        </ul>
+                    </nav>
+                </div>
                 @endif
             </div>
         </div>
     </div>
 
     <script>
-        document.getElementById('payBtn').onclick = function () {
+        document.getElementById('payBtn').onclick = function() {
 
             fetch('/create-order', {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                }
-            })
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                })
                 .then(res => res.json())
                 .then(order => {
 
-                    var options = {
-                        key: "{{ config('services.razorpay.key') }}",
-                        amount: order.amount,
-                        currency: "INR",
-                        order_id: order.id,
-                        name: "Laravel Razorpay",
-                        description: "Payment",
-                        handler: function (response) {
+                    console.log("Order Created:", order);
 
-                            fetch('/payment-success', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                                },
-                                body: JSON.stringify(response)
-                            }).then(() => location.reload());
+
+                    var options = {
+
+                        key: "{{ config('services.razorpay.key') }}",
+
+                        amount: order.amount,
+
+                        currency: order.currency,
+
+                        order_id: order.id,
+
+                        name: "Laravel Razorpay",
+
+                        description: "Payment",
+
+
+                        handler: function(response) {
+
+
+                            console.log("Payment Response:", response);
+
+
+                            fetch("{{ route('payments.success') }}", {
+
+                                    method: "POST",
+
+                                    headers: {
+
+                                        "Content-Type": "application/json",
+
+                                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
+
+                                    },
+
+
+                                    body: JSON.stringify({
+
+                                        razorpay_payment_id: response.razorpay_payment_id,
+
+                                        razorpay_order_id: order.id
+
+                                    })
+
+                                })
+
+                                .then(res => {
+
+                                    console.log("Status:", res.status);
+
+                                    return res.json();
+
+                                })
+
+                                .then(data => {
+
+                                    console.log("Success:", data);
+
+                                    if (data.success) {
+
+                                        location.reload();
+
+                                    }
+
+                                })
+
+                                .catch(error => {
+
+                                    console.error(error);
+
+                                });
+
                         }
+
                     };
 
-                    var rzp = new Razorpay(options);
+
+                    let rzp = new Razorpay(options);
+
                     rzp.open();
+
+
                 });
+
         };
+    </script>
+
+    <script>
+        new Chart(
+            document.getElementById('revenueChart'), {
+                type: 'bar',
+
+                data: {
+                    labels: @json($monthlyRevenue -> pluck('month')),
+
+                    datasets: [{
+                        label: 'Revenue',
+                        data: @json($monthlyRevenue -> pluck('revenue'))
+                    }]
+                },
+
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+
+            });
+
+        new Chart(
+            document.getElementById('statusChart'), {
+                type: 'pie',
+
+                data: {
+                    labels: [
+                        'Success',
+                        'Failed',
+                        'Pending'
+                    ],
+
+                    datasets: [{
+                        data: @json(array_values($statusData))
+                    }]
+                },
+
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+
+            });
+
+        new Chart(
+            document.getElementById('paymentChart'), {
+                type: 'line',
+
+                data: {
+                    labels: @json($monthlyPayments -> pluck('month')),
+
+                    datasets: [{
+                        label: 'Payments',
+                        data: @json($monthlyPayments -> pluck('total')),
+                        tension: 0.4
+                    }]
+                },
+
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+
+            });
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
